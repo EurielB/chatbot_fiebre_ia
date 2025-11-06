@@ -53,6 +53,24 @@ export default function Chat() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
+  // Cargar preferencias desde localStorage
+  useEffect(() => {
+    try {
+      const savedTts = localStorage.getItem('ttsEnabled')
+      const savedStream = localStorage.getItem('useStream')
+      if (savedTts != null) setTtsEnabled(savedTts === 'true')
+      if (savedStream != null) setUseStream(savedStream === 'true')
+    } catch {}
+  }, [])
+
+  // Guardar preferencias
+  useEffect(() => {
+    try { localStorage.setItem('ttsEnabled', String(ttsEnabled)) } catch {}
+  }, [ttsEnabled])
+  useEffect(() => {
+    try { localStorage.setItem('useStream', String(useStream)) } catch {}
+  }, [useStream])
+
   // Inicializar síntesis de voz y gestionar reproducción
   const speak = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) return
@@ -333,6 +351,16 @@ export default function Chat() {
     }
   }
 
+  const copyMessage = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setStatus('Mensaje copiado ✅')
+      setTimeout(() => setStatus('Listo'), 1500)
+    } catch {
+      setLastError('No se pudo copiar')
+    }
+  }, [])
+
   const testConnection = useCallback(async () => {
     try {
       setStatus('Probando conexión...')
@@ -379,40 +407,14 @@ export default function Chat() {
                 m.content
               )}
             </div>
+            {m.content ? (
+              <div className="msg-actions">
+                <button title="Copiar" onClick={() => void copyMessage(m.content)}>📋</button>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
-
-      <div className="status-bar">
-        <div className={`status-indicator ${loading ? 'loading' : lastError ? 'error' : ''}`}></div>
-        <span>
-          {loading ? 'Consultando...' : lastError ? `Error: ${lastError}` : status}
-        </span>
-      </div>
-
-      <div className="controls">
-        <button onClick={() => void testConnection()} disabled={loading}>
-          🔌 Probar conexión
-        </button>
-        <button onClick={() => setUseStream(s => !s)} disabled={loading}>
-          {useStream ? '⚡ Streaming ON' : '⏸️ Streaming OFF'}
-        </button>
-        <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading}>
-          {listening ? '🛑 Detener voz' : '🎤 Hablar'}
-        </button>
-        <button onClick={() => setTtsEnabled(v => !v)} disabled={loading}>
-          {ttsEnabled ? '🗣️ Voz ON' : '🔇 Voz OFF'}
-        </button>
-        <button onClick={() => {
-          setMessages([])
-          setLastError(null)
-          setStatus('Listo')
-        }} disabled={loading}>
-          🗑️ Limpiar chat
-        </button>
-        <small>📊 Streaming: {useStream ? 'Activo' : 'Inactivo'}</small>
-      </div>
-
       <div className="composer">
         <input
           placeholder="Escribe tu pregunta sobre fiebre aquí..."
@@ -428,10 +430,36 @@ export default function Chat() {
           {loading ? '⏳ Enviando...' : '📤 Enviar'}
         </button>
       </div>
-
       <div className="disclaimer">
         <strong>⚠️ Advertencia:</strong> Esta información no sustituye atención médica profesional. 
         En emergencias, busca ayuda inmediata.
+      </div>
+
+
+      <div className="controls">
+        <button onClick={() => void testConnection()} disabled={loading}>
+          🔌 Probar conexión
+        </button>
+        <button onClick={() => setUseStream(s => !s)} disabled={loading} className={useStream ? 'toggle-on' : ''}>
+          {useStream ? '⚡ Streaming ON' : '⏸️ Streaming OFF'}
+        </button>
+        <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading} className={listening ? 'toggle-on' : ''}>
+          {listening ? '🛑 Detener voz' : '🎤 Hablar'}
+        </button>
+        <button onClick={() => setTtsEnabled(v => !v)} disabled={loading} className={ttsEnabled ? 'toggle-on' : ''}>
+          {ttsEnabled ? '🗣️ Voz ON' : '🔇 Voz OFF'}
+        </button>
+        <button onClick={() => {
+          setMessages([])
+          setLastError(null)
+          setStatus('Listo')
+        }} disabled={loading}>
+          🗑️ Limpiar chat
+        </button>
+        <span className={`controls-status ${loading ? 'loading' : lastError ? 'error' : ''}`}>
+          <span className="led"></span>
+          {loading ? 'Consultando...' : lastError ? `Error: ${lastError}` : status}
+        </span>
       </div>
     </div>
   )

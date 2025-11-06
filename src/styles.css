@@ -80,6 +80,7 @@ body {
   margin: 0 0 8px;
   font-size: clamp(20px, 5vw, 28px);
   font-weight: 700;
+  text-align: center;
   background: linear-gradient(135deg, var(--fg) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -179,6 +180,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
 }
 
 .msg-user {
@@ -243,6 +245,34 @@ main {
 .msg-content:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px var(--shadow-lg);
+}
+
+/* Acciones del mensaje */
+.msg-actions {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 6px;
+}
+
+.msg-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--fg);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.msg-actions button:hover {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Composer mejorado */
@@ -351,6 +381,12 @@ main {
   color: var(--accent);
 }
 
+.controls .toggle-on {
+  background: linear-gradient(135deg, rgba(91, 141, 239, 0.15) 0%, rgba(91, 141, 239, 0.25) 100%);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .controls button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -366,50 +402,48 @@ main {
   flex-wrap: wrap;
 }
 
-/* Status y disclaimer */
-.status-bar {
-  display: flex;
+/* Estado dentro de controles */
+.controls-status {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--card);
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  gap: 6px;
+  padding: 8px 12px;
   font-size: 12px;
-  width: 100%;
-  flex-shrink: 0;
-  overflow: hidden;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 8px;
+  white-space: nowrap;
 }
-
-.status-indicator {
+.controls-status .led {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--success);
   animation: pulse 2s infinite;
 }
-
-.status-indicator.error {
+.controls-status.error {
+  color: var(--error);
+}
+.controls-status.error .led {
   background: var(--error);
 }
-
-.status-indicator.loading {
+.controls-status.loading {
+  color: var(--warning);
+}
+.controls-status.loading .led {
   background: var(--warning);
 }
 
-.status-bar span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* Status y disclaimer */
 
 .disclaimer {
   color: var(--fg-muted);
-  font-size: 11px;
+  font-size: 16px;
   text-align: center;
-  padding: 10px 12px;
+  padding: 14px 16px;
   line-height: 1.5;
   background: var(--accent-light);
   border-radius: 8px;
@@ -427,7 +461,7 @@ main {
   padding: 12px 16px;
   color: var(--fg-muted);
   text-align: center;
-  font-size: 11px;
+  font-size: 14px;
   border-top: 1px solid var(--border);
   background: var(--card);
   width: 100%;
@@ -554,19 +588,20 @@ main {
   }
   
   .disclaimer {
-    font-size: 10px;
-    padding: 8px 10px;
+    font-size: 16px;
+    padding: 12px 14px;
   }
   
   .footer {
     padding: 10px 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
 @media (max-width: 480px) {
   .header h1 {
     font-size: 20px;
+    
   }
   
   .msg-content {

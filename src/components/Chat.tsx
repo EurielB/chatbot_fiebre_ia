@@ -42,6 +42,9 @@ export default function Chat() {
   const [lastError, setLastError] = useState<string | null>(null)
   const [useStream, setUseStream] = useState<boolean>(USE_STREAM_BY_DEFAULT)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const [listening, setListening] = useState<boolean>(false)
+  const [ttsEnabled, setTtsEnabled] = useState<boolean>(false)
+  const recognitionRef = useRef<any>(null)
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading])
 
@@ -49,6 +52,29 @@ export default function Chat() {
     // Auto-scroll al final en cada cambio de mensajes
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
+
+  // Inicializar síntesis de voz y gestionar reproducción
+  const speak = useCallback((text: string) => {
+    if (!('speechSynthesis' in window)) return
+    const synth = window.speechSynthesis
+    try {
+      synth.cancel()
+    } catch {}
+    if (!text?.trim()) return
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = 'es-ES'
+    utter.rate = 1
+    utter.pitch = 1
+    synth.speak(utter)
+  }, [])
+
+  // Cuando termina de generarse una respuesta y TTS está activo, reproducirla
+  useEffect(() => {
+    if (!ttsEnabled) return
+    if (loading) return
+    const last = [...messages].reverse().find(m => m.role === 'assistant')
+    if (last && last.content) speak(last.content)
+  }, [messages, loading, ttsEnabled, speak])
 
   const sendMessage = useCallback(async () => {
     const question = input.trim()
@@ -235,6 +261,71 @@ export default function Chat() {
     }
   }, [input, messages])
 
+  // Reconocimiento de voz (Web Speech API)
+  const startListening = useCallback(() => {
+    try {
+      const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SR) {
+        setLastError('Reconocimiento de voz no soportado en este navegador')
+        return
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop() } catch {}
+      }
+      const recognition: any = new SR()
+      recognition.lang = 'es-ES'
+      recognition.interimResults = true
+      recognition.continuous = false
+
+      let interim = ''
+      let finalText = ''
+
+      recognition.onstart = () => {
+        setListening(true)
+        setStatus('🎙️ Escuchando...')
+      }
+      recognition.onerror = (e: any) => {
+        setLastError(e?.error ? `Voz: ${e.error}` : 'Error de voz')
+      }
+      recognition.onresult = (event: any) => {
+        interim = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i]
+          if (res.isFinal) {
+            finalText += res[0].transcript
+          } else {
+            interim += res[0].transcript
+          }
+        }
+        // Mostrar provisional en el input
+        setInput((finalText + ' ' + interim).trim())
+      }
+      recognition.onend = () => {
+        setListening(false)
+        setStatus('Listo')
+        recognitionRef.current = null
+        const text = (finalText || interim).trim()
+        if (text) {
+          setInput(text)
+          // Enviar automáticamente
+          setTimeout(() => { void sendMessage() }, 0)
+        }
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch (e) {
+      setLastError('No se pudo iniciar el micrófono')
+      setListening(false)
+    }
+  }, [sendMessage])
+
+  const stopListening = useCallback(() => {
+    try {
+      recognitionRef.current?.stop()
+    } catch {}
+  }, [])
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && canSend) {
       e.preventDefault()
@@ -305,6 +396,12 @@ export default function Chat() {
         </button>
         <button onClick={() => setUseStream(s => !s)} disabled={loading}>
           {useStream ? '⚡ Streaming ON' : '⏸️ Streaming OFF'}
+        </button>
+        <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading}>
+          {listening ? '🛑 Detener voz' : '🎤 Hablar'}
+        </button>
+        <button onClick={() => setTtsEnabled(v => !v)} disabled={loading}>
+          {ttsEnabled ? '🗣️ Voz ON' : '🔇 Voz OFF'}
         </button>
         <button onClick={() => {
           setMessages([])
